@@ -1099,7 +1099,8 @@
   _.templateSettings = {
     evaluate    : /<%([\s\S]+?)%>/g,
     interpolate : /<%=([\s\S]+?)%>/g,
-    escape      : /<%-([\s\S]+?)%>/g
+    escape      : /<%-([\s\S]+?)%>/g,
+    embed    	: /<%#([\s\S]+?)%>/g
   };
 
   // When customizing `templateSettings`, if you don't want to define an
@@ -1130,6 +1131,7 @@
 
     // Combine delimiters into one regular expression via alternation.
     var matcher = new RegExp([
+      (settings.embed || noMatch).source,
       (settings.escape || noMatch).source,
       (settings.interpolate || noMatch).source,
       (settings.evaluate || noMatch).source
@@ -1138,10 +1140,13 @@
     // Compile the template source, escaping string literals appropriately.
     var index = 0;
     var source = "__p+='";
-    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+    text.replace(matcher, function(match, embed, escape, interpolate, evaluate, offset) {
       source += text.slice(index, offset)
         .replace(escaper, function(match) { return '\\' + escapes[match]; });
-
+	
+      if (embed) {
+        source += "'+\n((__t=(" + embed + "(" +  (settings.variable || 'obj') + ")))==null?'':__t)+\n'";
+      }
       if (escape) {
         source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
       }
@@ -1155,6 +1160,8 @@
       return match;
     });
     source += "';\n";
+
+	//console.log ('source', source);
 
     // If a variable is not specified, place data values in local scope.
     if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
